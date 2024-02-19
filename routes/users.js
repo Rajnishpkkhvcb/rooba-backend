@@ -1,15 +1,18 @@
-// routes/users.js
-
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// GET /users - Get all users (without passwords)
+
+// Question 3: REST API with Node.js and Express
+// Create a REST API endpoint using Node.js and Express that allows creating, 
+// reading, updating, and deleting (CRUD) user profiles stored in a MongoDB database.
+
+
+// GET /users - Get all users
 router.get('/', async (req, res) => {
   try {
-    console.log("hiiiiiiiiiiiiiiiiiiiiiiiiiiiii")
-    const users = await User.find();
-    console.log(users,"uuuuuuuuuuuuuuuuuuuuuuu")
+    const users = await User.find().select('-password');
+    console.log(users, "uuuuuuuuuuuuuuuuuuuuuuu")
     res.json(users);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -38,14 +41,11 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
-    if (user == null) {
+    if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    user.name = req.body.name || user.name;
-    user.email = req.body.email || user.email;
-    user.age = req.body.age || user.age;
-    user.country = req.body.country || user.country;
+    Object.assign(user, req.body);
 
     const updatedUser = await user.save();
     res.json(updatedUser);
@@ -58,7 +58,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
-    if (user == null) {
+    if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
@@ -66,6 +66,43 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'User deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /users/api/aggregation - Aggregation endpoint
+
+
+
+// Q5 MongoDB Data Aggregation
+// Using MongoDB, write a query to aggregate user data from a collection named users.
+//  The aggregation should calculate the total number of users,
+// the average age  and the number of users in each country.
+
+
+router.get('/api/aggregation', async (req, res) => {
+  try {
+    const result = await User.aggregate([
+      {
+        $group: {
+          _id: "$country",
+          totalUsersByCountry: { $sum: 1 },
+          averageAge: { $avg: "$age" }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          country: "$_id",
+          totalUsersByCountry: 1,
+          averageAge: 1
+        }
+      }
+    ]);
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching user aggregation:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
